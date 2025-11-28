@@ -10,7 +10,9 @@ app = Flask(__name__)
 # Configure Gemini API (FREE)
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', 'YOUR_API_KEY_HERE')
 genai.configure(api_key=GEMINI_API_KEY)
- model = genai.GenerativeModel('gemini-pro')
+
+# Use gemini-pro instead of gemini-1.5-flash (compatible with free tier)
+model = genai.GenerativeModel('gemini-pro')
 
 DB_FILE = 'clinical_master.db'
 
@@ -225,10 +227,8 @@ PR: 88 b/m
     </div>
     
     <script>
-        // Set API URL
         document.getElementById('apiUrl').textContent = window.location.origin + '/api/export/csv';
         
-        // Load stats
         async function loadStats() {
             try {
                 const response = await fetch('/api/stats');
@@ -252,7 +252,6 @@ PR: 88 b/m
                 return;
             }
             
-            // Show loading
             btn.disabled = true;
             btn.innerHTML = '<span class="loading"></span> Processing with AI...';
             resultDiv.style.display = 'none';
@@ -279,11 +278,8 @@ PR: 88 b/m
                         '</pre></details>' +
                         '<p style="margin-top: 15px; color: #28a745;"><strong>✓ Saved to master database</strong></p>';
                     
-                    // Clear form
                     document.getElementById('note').value = '';
                     document.getElementById('patient_id').value = '';
-                    
-                    // Update stats
                     loadStats();
                 } else {
                     resultDiv.className = 'result error';
@@ -303,12 +299,10 @@ PR: 88 b/m
                 resultDiv.style.display = 'block';
             }
             
-            // Reset button
             btn.disabled = false;
             btn.innerHTML = '🔍 Extract Data with AI';
         }
         
-        // Allow Enter key to submit
         document.getElementById('patient_id').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') extract();
         });
@@ -327,7 +321,6 @@ def extract():
         if not clinical_note or not patient_id:
             return jsonify({'success': False, 'error': 'Missing clinical note or patient ID'}), 400
         
-        # Extraction prompt
         prompt = f"""You are an expert clinical data extraction specialist. Extract structured data from this clinical note.
 
 Clinical Note:
@@ -365,18 +358,13 @@ Extract the following fields and return ONLY valid JSON with no markdown, no pre
 
 Return ONLY the JSON object."""
 
-        # Call Gemini API (FREE)
         response = model.generate_content(prompt)
         extracted = response.text.strip()
-        
-        # Clean up response
         extracted = extracted.replace('```json', '').replace('```', '').strip()
         
-        # Parse JSON
         data_dict = json.loads(extracted)
         data_dict['date_added'] = datetime.now().isoformat()
         
-        # Save to SQLite database
         conn = sqlite3.connect(DB_FILE)
         c = conn.cursor()
         c.execute('INSERT OR REPLACE INTO patients VALUES (?, ?, ?)',
@@ -393,7 +381,6 @@ Return ONLY the JSON object."""
 
 @app.route('/api/export/csv')
 def export_csv():
-    """Excel connects to this endpoint!"""
     try:
         conn = sqlite3.connect(DB_FILE)
         c = conn.cursor()
@@ -408,24 +395,19 @@ def export_csv():
         if not rows:
             return "patient_id,date_added,diagnosis,outcome\n", 200, {'Content-Type': 'text/csv'}
         
-        # Convert to CSV
         import csv
         from io import StringIO
         
         output = StringIO()
-        
-        # Get all unique keys
         all_keys = set()
         for row in rows:
             all_keys.update(row.keys())
         
         fieldnames = sorted(all_keys)
-        
         writer = csv.DictWriter(output, fieldnames=fieldnames)
         writer.writeheader()
         
         for row in rows:
-            # Convert arrays to strings
             clean_row = {}
             for k, v in row.items():
                 if isinstance(v, list):
@@ -444,7 +426,6 @@ def export_csv():
 
 @app.route('/api/stats')
 def stats():
-    """Get database statistics"""
     try:
         conn = sqlite3.connect(DB_FILE)
         c = conn.cursor()
@@ -459,3 +440,36 @@ if __name__ == '__main__':
     init_db()
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
+```
+
+### **Step 2: Delete and Re-create GitHub Repo**
+
+1. Go to your GitHub repo: `https://github.com/YOUR_USERNAME/clinical-extractor`
+2. Click **"Settings"** (top right)
+3. Scroll all the way down
+4. Click **"Delete this repository"**
+5. Type the repo name to confirm
+6. Click **"I understand, delete this repository"**
+
+### **Step 3: Create Fresh Repo**
+
+1. Go to GitHub homepage
+2. Click **"+"** → **"New repository"**
+3. Name: `clinical-extractor`
+4. Select **"Public"**
+5. Click **"Create repository"**
+
+### **Step 4: Add Fixed Files**
+
+1. Click **"creating a new file"**
+2. Name it: `app.py`
+3. **Paste the entire corrected code above**
+4. Click **"Commit new file"**
+
+5. Click **"Add file"** → **"Create new file"**
+6. Name: `requirements.txt`
+7. Paste:
+```
+   flask==3.0.0
+   google-generativeai==0.3.2
+   gunicorn==21.2.0
